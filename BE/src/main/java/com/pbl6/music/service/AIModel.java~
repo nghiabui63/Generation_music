@@ -1,0 +1,87 @@
+package com.pbl6.music.service;
+
+import com.pbl6.music.util.GenerationException;
+import com.pbl6.music.util.ModelLoadException;
+import org.tensorflow.SavedModelBundle;
+import org.tensorflow.Session;
+import org.tensorflow.Tensor;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+public class AIModel implements AutoCloseable {
+    private final String modelPath;
+    private SavedModelBundle model;
+    private static final String MODEL_TAG = "serve";
+
+    public AIModel(String modelPath) {
+        this.modelPath = modelPath;
+        loadModel();
+    }
+
+    private void loadModel() {
+        try {
+            validateModelPath();
+            this.model = SavedModelBundle.load(modelPath, MODEL_TAG);
+        } catch (Exception e) {
+            throw new ModelLoadException("Failed to load AI model from " + modelPath, e);
+        }
+    }
+
+    private void validateModelPath() throws ModelLoadException {
+        Path path = Paths.get(modelPath);
+        if (!Files.exists(path)) {
+            throw new ModelLoadException("Model path does not exist: " + modelPath);
+        }
+        if (!Files.isDirectory(path)) {
+            throw new ModelLoadException("Model path is not a directory: " + modelPath);
+        }
+    }
+
+    public byte[] generate(String genre, Integer duration, String mood, String tempo) {
+        if (model == null) {
+            throw new IllegalStateException("Model not loaded");
+        }
+
+        try (Session session = model.session();
+             Tensor genreTensor = Tensor.create(genre.getBytes("UTF-8"));
+             Tensor durationTensor = Tensor.create(new int[] {duration}); // Use array for scalar
+             Tensor moodTensor = Tensor.create(mood.getBytes("UTF-8"));
+             Tensor tempoTensor = Tensor.create(tempo.getBytes("UTF-8"))) {
+
+            Tensor result = session.runner()
+                    .feed("input_genre", genreTensor)
+                    .feed("input_duration", durationTensor)
+                    .feed("input_mood", moodTensor)
+                    .feed("input_tempo", tempoTensor)
+                    .fetch("output_music")
+                    .run()
+                    .get(0);
+
+            try {
+                // Use bytesValue to get the byte array directly
+                return result.bytesValue();
+            } finally {
+                result.close();
+            }
+        } catch (Exception e) {
+            throw new GenerationException("Failed to generate music", e);
+        }
+    }
+
+
+    @Override
+    public void close() {
+        if (model != null) {
+            try {
+                model.close();
+            } catch (Exception e) {
+                // Log error but don't throw
+                System.err.println("Error closing model: " + e.getMessage());
+            } finally {
+                model = null;
+            }
+        }
+    }
+}

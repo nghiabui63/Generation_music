@@ -1,0 +1,21 @@
+package com.pbl6.music.util;
+
+public class ModelLoadException extends RuntimeException {
+    public ModelLoadException(String message) {
+        super(message);
+    }
+
+    public ModelLoadException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+
+public class GenerationException extends RuntimeException {
+    public GenerationException(String message) {
+        super(message);
+    }
+
+    public GenerationException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}

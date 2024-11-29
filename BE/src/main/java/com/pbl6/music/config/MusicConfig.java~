@@ -1,0 +1,15 @@
+package com.pbl6.music.config;
+
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class MusicConfig {
+
+    @Bean
+    public AIModel aiModel(@Value("${ai.model.path}") String modelPath) {
+        return new AIModel(modelPath);
+    }
+}

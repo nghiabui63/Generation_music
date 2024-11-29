@@ -1,0 +1,4 @@
+package com.pbl6.music.config;
+
+public class RestAuthenticationEntryPoint {
+}

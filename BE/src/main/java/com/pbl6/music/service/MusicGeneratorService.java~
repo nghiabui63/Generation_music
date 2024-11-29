@@ -1,0 +1,86 @@
+package com.pbl6.music.service;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.UUID;
+
+@Service
+public class MusicGeneratorService {
+
+    @Value("${music.upload.dir}")
+    private String uploadDir;
+
+    private final AIModel aiModel;
+
+    // Inject AIModel vào qua constructor
+    public MusicGeneratorService(AIModel aiModel) {
+        this.aiModel = aiModel;
+    }
+
+    // DTO cho các tham số tạo nhạc
+    public record MusicRequest(
+            String genre,
+            Integer duration,
+            String mood,
+            String tempo
+    ) {}
+
+    public String generateMusic(MusicRequest request) {
+        try {
+            // 1. Validate request
+            validateRequest(request);
+
+            // 2. Chuẩn bị thư mục lưu trữ
+            String fileName = UUID.randomUUID().toString() + ".mp3";
+            Path filePath = prepareStorageDirectory(fileName);
+
+            // 3. Gọi AI Model để tạo nhạc
+            byte[] generatedMusic = aiModel.generate(
+                    request.genre(),
+                    request.duration(),
+                    request.mood(),
+                    request.tempo()
+            );
+
+            // 4. Lưu file nhạc
+            Files.write(filePath, generatedMusic);
+
+            // 5. Trả về đường dẫn relative để frontend có thể truy cập
+            return "/music/generated/" + fileName;
+
+        } catch (IOException e) {
+            throw new MusicGenerationException("Lỗi khi tạo file nhạc", e);
+        } catch (Exception e) {
+            throw new MusicGenerationException("Lỗi không xác định khi tạo nhạc", e);
+        }
+    }
+
+    private void validateRequest(MusicRequest request) {
+        if (request.genre() == null || request.genre().isEmpty()) {
+            throw new IllegalArgumentException("Genre không được để trống");
+        }
+        if (request.duration() == null || request.duration() < 10 || request.duration() > 300) {
+            throw new IllegalArgumentException("Thời lượng phải từ 10 đến 300 giây");
+        }
+        // Thêm các validation khác nếu cần
+    }
+
+    private Path prepareStorageDirectory(String fileName) throws IOException {
+        Path uploadPath = Paths.get(uploadDir);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+        return uploadPath.resolve(fileName);
+    }
+
+    // Custom Exceptions
+    public static class MusicGenerationException extends RuntimeException {
+        public MusicGenerationException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+}

@@ -1,0 +1,11 @@
+package com.pbl6.music.repository;
+
+import com.pbl6.music.entity.TransactionHistory;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface TransactionRepository extends JpaRepository<TransactionHistory, Long> {
+    List<TransactionHistory> transactions = transactionHistoryRepository.findByTransactionRef(vnp_TxnRef);
+
+}
